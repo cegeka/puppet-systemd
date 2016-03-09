@@ -1,0 +1,15 @@
+# This file is managed by Puppet. DO NOT EDIT.
+<% if !@unit.empty? -%>
+
+[Unit]
+<% @unit.keys.sort.each do |k| -%>
+<%= k -%>=<%= @unit[k] %>
+<% end -%>
+<% end -%>
+<% if !@service.empty? -%>
+
+[Service]
+<% @service.keys.sort.each do |k| -%>
+<%= k -%>=<%= @service[k] %>
+<% end -%>
+<% end -%>
