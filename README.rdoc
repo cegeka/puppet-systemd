@@ -1,1 +1,5 @@
-= puppet-systemd module{<img src='https://jenkins-iac.cegeka.be/job/puppet-systemd/badge/icon' />}[https://codex.cegeka.be/jenkins/job/puppet-systemd/]This is the systemd module.
+= puppet-systemd module
+
+{<img src='https://jenkins-iac.cegeka.be/job/puppet-systemd/badge/icon' />}[https://jenkins-iac.cegeka.be/jenkins/job/puppet-systemd/]
+
+This is the systemd module.
