@@ -11,7 +11,7 @@ define systemd::unit (
     "invalid name (${name}) in systemd::unit")
 
   # don't force the user to put the full path to systemd's directory
-  if $target =~ '^/' {
+  if $target =~ /^\// {
     $real_target = $target
   } else {
     $real_target = "/lib/systemd/system/${target}"
