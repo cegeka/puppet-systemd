@@ -1,7 +1,10 @@
 # Systemd
 
 [![Puppet Forge](http://img.shields.io/puppetforge/v/camptocamp/systemd.svg)](https://forge.puppetlabs.com/camptocamp/systemd)
+[![Puppet Forge Downloads](http://img.shields.io/puppetforge/dt/camptocamp/systemd.svg)](https://forge.puppetlabs.com/camptocamp/systemd)
 [![Build Status](https://travis-ci.org/camptocamp/puppet-systemd.png?branch=master)](https://travis-ci.org/camptocamp/puppet-systemd)
+[![Puppet Forge Endorsement](https://img.shields.io/puppetforge/e/camptocamp/systemd.svg)](https://forge.puppetlabs.com/camptocamp/systemd)
+[![By Camptocamp](https://img.shields.io/badge/by-camptocamp-fb7047.svg)](http://www.camptocamp.com)
 
 ## Overview
 
@@ -15,7 +18,7 @@ There are two ways to use this module.
 
 ### unit files
 
-Let this module handle file creation and systemd reloading.
+Let this module handle file creation.
 
 ```puppet
 systemd::unit_file { 'foo.service':
@@ -26,11 +29,9 @@ systemd::unit_file { 'foo.service':
 }
 ```
 
-Or handle file creation yourself and trigger systemd.
+This is equivalent to:
 
 ```puppet
-include systemd::systemctl::daemon_reload
-
 file { '/usr/lib/systemd/system/foo.service':
   ensure => file,
   owner  => 'root',
@@ -38,11 +39,8 @@ file { '/usr/lib/systemd/system/foo.service':
   mode   => '0644',
   source => "puppet:///modules/${module_name}/foo.service",
 }
-~> Class['systemd::systemctl::daemon_reload']
-
-service {'foo':
-  ensure    => 'running',
-  subscribe => File['/usr/lib/systemd/system/foo.service'],
+~> service {'foo':
+  ensure => 'running',
 }
 ```
 
@@ -60,7 +58,7 @@ systemd::unit_file { 'foo.service':
 
 Drop-in files are used to add or alter settings of a unit without modifying the
 unit itself. As for the unit files, the module can handle the file and
-directory creation and systemd reloading:
+directory creation:
 
 ```puppet
 systemd::dropin_file { 'foo.conf':
@@ -72,11 +70,9 @@ systemd::dropin_file { 'foo.conf':
 }
 ```
 
-Or handle file and directory creation yourself and trigger systemd:
+This is equivalent to:
 
 ```puppet
-include systemd::systemctl::daemon_reload
-
 file { '/etc/systemd/system/foo.service.d':
   ensure => directory,
   owner  => 'root',
@@ -90,19 +86,19 @@ file { '/etc/systemd/system/foo.service.d/foo.conf':
   mode   => '0644',
   source => "puppet:///modules/${module_name}/foo.conf",
 }
-~> Class['systemd::systemctl::daemon_reload']
-
-service {'foo':
-  ensure    => 'running',
-  subscribe => File['/etc/systemd/system/foo.service.d/foo.conf'],
+~> service {'foo':
+  ensure => 'running',
 }
 ```
 
-Sometimes it's desirable to reload the systemctl daemon before a service is refreshed (for example:
-when overriding `ExecStart` or adding environment variables to the drop-in file).  In that case,
-use `daemon_reload => 'eager'` instead of the default `'lazy'`.  Be aware that the daemon could be
-reloaded multiple times if you have multiple `systemd::dropin_file` resources and any one of them
-is using `'eager'`.
+dropin-files can also be generated via hiera:
+
+```yaml
+systemd::dropin_files:
+  my-foo.conf:
+    unit: foo.service
+    source: puppet:///modules/${module_name}/foo.conf
+```
 
 ### tmpfiles
 
@@ -129,6 +125,81 @@ file { '/etc/tmpfiles.d/foo.conf':
 ~> Class['systemd::tmpfiles']
 ```
 
+### timer units
+Create a systemd timer unit and a systemd service unit to execute from
+that timer
+
+The following will create a timer unit and a service unit file.
+When `active` and `enable` are set to `true` the puppet service `runoften.timer` will be
+declared, started and enabled.
+
+```puppet
+systemd::timer{'runoften.timer':
+  timer_source   => "puppet:///modules/${module_name}/runoften.timer",
+  service_source => "puppet:///modules/${module_name}/runoften.service",
+  active         => true,
+  enable         => true,
+}
+```
+
+A trivial daily run.
+In this case enable and active are both unset and so the service `daily.timer`
+is not declared by the `systemd::timer` type.
+
+```puppet
+$_timer = @(EOT)
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1d
+EOT
+
+$_service = @(EOT)
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/touch /tmp/file
+EOT
+
+systemd::timer{'daily.timer':
+  timer_content   => $_timer,
+  service_content => $_service,
+}
+
+service{'daily.timer':
+  ensure    => running,
+  subscribe => Systemd::Timer['daily.timer'],
+}
+
+```
+
+If neither `service_content` or `service_source` are specified then no
+service unit will be created.
+
+The service unit name can also be specified.
+
+```puppet
+$_timer = @(EOT)
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1d
+Unit=touch-me-today.service
+EOT
+
+$_service = @(EOT)
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/touch /tmp/file
+EOT
+
+
+systemd::timer{'daily.timer':
+  timer_content   => $_timer,
+  service_unit    => 'touch-me-today.service',
+  service_content => $_service,
+  active          => true,
+  enable          => true,
+}
+```
+
 ### service limits
 
 Manage soft and hard limits on various resources for executed processes.
@@ -150,6 +221,12 @@ systemd::service_limits { 'foo.service':
 }
 ```
 
+### Daemon reloads
+
+Systemd caches unit files and their relations. This means it needs to reload, typically done via `systemctl daemon-reload`. Since Puppet 6.1.0 ([PUP-3483](https://tickets.puppetlabs.com/browse/PUP-3483)) takes care of this by calling `systemctl show $SERVICE -- --property=NeedDaemonReload` to determine if a reload is needed. Typically this works well and removes the need for `systemd::systemctl::daemon_reload` as provided prior to camptocamp/systemd 3.0.0. This avoids common circular dependencies.
+
+It does contain a workaround for [PUP-9473](https://tickets.puppetlabs.com/browse/PUP-9473) but there's no guarantee that this works in every case.
+
 ### network
 
 systemd-networkd is able to manage your network configuration. We provide a
@@ -167,13 +244,17 @@ systemd::network{'eth0.network':
 ### Services
 
 Systemd provides multiple services. Currently you can manage `systemd-resolved`,
-`systemd-timesyncd` and `systemd-networkd` via the main class:
+`systemd-timesyncd`, `systemd-networkd`, `systemd-journald` and `systemd-logind`
+via the main class:
 
 ```puppet
 class{'systemd':
   manage_resolved  => true,
   manage_networkd  => true,
   manage_timesyncd => true,
+  manage_journald  => true,
+  manage_udevd     => true,
+  manage_logind    => true,
 }
 ```
 
@@ -185,7 +266,7 @@ When configuring `systemd::resolved` you could set `dns_stub_resolver` to false 
 
 Systemd has introduced `DNS Over TLS` in the release 239. Currently two states are supported `no` and `opportunistic`. When enabled with `opportunistic` `systemd-resolved` will start a TCP-session to a DNS server with `DNS Over TLS` support. Note that there will be no host checking for `DNS Over TLS` due to missing implementation in `systemd-resolved`.
 
-It is possible to configure the default ntp servers in /etc/systemd/timesyncd.conf:
+It is possible to configure the default ntp servers in `/etc/systemd/timesyncd.conf`:
 
 ```puppet
 class{'systemd':
@@ -195,7 +276,7 @@ class{'systemd':
 }
 ```
 
-This requires puppetlabs-inifile, which is only a soft dependency in this module (you need to explicitly install it). Both parameters accept a string or an array.
+This requires [puppetlabs-inifile](https://forge.puppet.com/puppetlabs/inifile), which is only a soft dependency in this module (you need to explicitly install it). Both parameters accept a string or an array.
 
 ### Resource Accounting
 
@@ -226,3 +307,63 @@ systemd::journald_settings:
   MaxLevelStore:
     ensure: absent
 ```
+
+### udevd configuration
+
+It allows you to manage the udevd configuration.  You can set the udev.conf values via the `udev_log`, `udev_children_max`, `udev_exec_delay`, `udev_event_timeout`, `udev_resolve_names`, and `udev_timeout_signal` parameters.
+
+Additionally you can set custom udev rules with the `udev_rules` parameter.
+
+```puppet
+class { 'systemd':
+  manage_udevd => true,
+  udev_rules   => { 
+      'example_raw.rules' => {
+      'rules'             => [
+        'ACTION=="add", KERNEL=="sda", RUN+="/bin/raw /dev/raw/raw1 %N"',
+        'ACTION=="add", KERNEL=="sdb", RUN+="/bin/raw /dev/raw/raw2 %N"',
+      ],
+    },
+  },
+}
+```
+
+### udev::rules configuration
+
+Custom udev rules can be defined for specific events.
+
+```yaml
+systemd::udev::rule:
+  ensure: present
+  path: /etc/udev/rules.d
+  selinux_ignore_defaults: false
+  notify: "Service[systemd-udevd']"
+  rules:
+    - 'ACTION=="add", KERNEL=="sda", RUN+="/bin/raw /dev/raw/raw1 %N"'
+    - 'ACTION=="add", KERNEL=="sdb", RUN+="/bin/raw /dev/raw/raw2 %N"',
+```
+
+### logind configuration
+
+It also allows you to manage logind settings. You can manage logind settings through setting the `logind_settings` parameter. If you want a parameter to be removed, you can pass its value as params.
+
+```yaml
+systemd::logind_settings:
+  HandleSuspendKey: 'ignore'
+  KillUserProcesses: 'no'
+  RemoveIPC:
+    ensure: absent
+  UserTasksMax: 10000
+```
+
+### User linger
+
+A `loginctl_user` resource is available to manage user linger enablement:
+
+```puppet
+loginctl_user { 'foo':
+  linger => enabled,
+}
+```
+
+or as a hash via the `systemd::loginctl_users` parameter.

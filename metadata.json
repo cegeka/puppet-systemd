@@ -1,6 +1,6 @@
 {
   "name": "camptocamp-systemd",
-  "version": "2.6.0",
+  "version": "3.0.0-rc0",
   "author": "camptocamp",
   "summary": "Puppet Systemd module",
   "license": "Apache-2.0",
@@ -10,17 +10,11 @@
   "dependencies": [
     {
       "name": "puppetlabs/stdlib",
-      "version_requirement": ">= 4.13.1 < 7.0.0"
+      "version_requirement": ">= 4.13.1 < 8.0.0"
     },
     {
       "name": "puppetlabs/inifile",
-      "version_requirement": ">= 1.6.0 <4.0.0"
-    }
-  ],
-  "requirements": [
-    {
-      "name": "puppet",
-      "version_requirement": ">= 4.10.10 < 7.0.0"
+      "version_requirement": ">= 1.6.0 < 6.0.0"
     }
   ],
   "operatingsystem_support": [
@@ -36,11 +30,26 @@
       "operatingsystem": "Ubuntu",
       "operatingsystemrelease": [
         "16.04",
-        "18.04"
+        "18.04",
+        "20.04"
+      ]
+    },
+    {
+      "operatingsystem": "SLES",
+      "operatingsystemrelease": [
+        "12",
+        "15"
       ]
     },
     {
       "operatingsystem": "RedHat",
+      "operatingsystemrelease": [
+        "7",
+        "8"
+      ]
+    },
+    {
+      "operatingsystem": "VirtuozzoLinux",
       "operatingsystemrelease": [
         "7"
       ]
@@ -48,11 +57,35 @@
     {
       "operatingsystem": "CentOS",
       "operatingsystemrelease": [
-        "7"
+        "7",
+        "8"
+      ]
+    },
+    {
+      "operatingsystem": "OracleLinux",
+      "operatingsystemrelease": [
+        "7",
+        "8"
       ]
     },
     {
       "operatingsystem": "Archlinux"
+    },
+    {
+      "operatingsystem": "Fedora",
+      "operatingsystemrelease": [
+        "30",
+        "31"
+      ]
     }
-  ]
+  ],
+  "requirements": [
+    {
+      "name": "puppet",
+      "version_requirement": ">= 6.1.0 < 8.0.0"
+    }
+  ],
+  "pdk-version": "1.18.0",
+  "template-url": "pdk-default#1.18.0",
+  "template-ref": "tags/1.18.0-0-g095317c"
 }
