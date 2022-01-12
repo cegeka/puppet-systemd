@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe 'systemd::timer' do
@@ -19,14 +21,14 @@ describe 'systemd::timer' do
           it { is_expected.to compile.with_all_deps }
 
           it {
-            is_expected.to contain_systemd__unit_file('foobar.timer').with(
-              content: "[Timer]\nOnCalendar=weekly",
+            expect(subject).to contain_systemd__unit_file('foobar.timer').with(
+              content: "[Timer]\nOnCalendar=weekly"
             )
           }
 
           it {
-            is_expected.to contain_systemd__unit_file('foobar.service').with(
-              content: "[Service]\nExecStart=/bin/touch /tmp/foobar",
+            expect(subject).to contain_systemd__unit_file('foobar.service').with(
+              content: "[Service]\nExecStart=/bin/touch /tmp/foobar"
             )
           }
         end
@@ -70,13 +72,34 @@ describe 'systemd::timer' do
           it { is_expected.to contain_systemd__unit_file('gamma.service').with_content("[Service]\nExecStart=/bin/touch /tmp/foobar") }
         end
 
+        context 'with timer activated service' do
+          let(:params) do
+            {
+              active: true,
+              enable: true,
+              timer_content: "[Timer]\nOnCalendar=hourly",
+              service_content: "[Service]\nExecStart=/bin/echo timer-fired",
+            }
+          end
+
+          it { is_expected.to contain_systemd__unit_file('foobar.timer').with_content("[Timer]\nOnCalendar=hourly") }
+          it { is_expected.to contain_systemd__unit_file('foobar.service').with_content("[Service]\nExecStart=/bin/echo timer-fired") }
+
+          it {
+            expect(subject).to create_exec('foobar.service-systemctl-daemon-reload').with(
+              command: 'systemctl daemon-reload',
+              refreshonly: true
+            )
+          }
+        end
+
         context 'with a bad timer name' do
           let(:title) { 'foobar' }
 
           it {
-            expect {
-              is_expected.to compile.with_all_deps
-            }.to raise_error(%r{expects a match for})
+            expect do
+              expect(subject).to compile.with_all_deps
+            end.to raise_error(%r{expects a match for})
           }
         end
       end

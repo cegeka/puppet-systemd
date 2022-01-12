@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe 'systemd::tmpfile' do
@@ -9,11 +11,12 @@ describe 'systemd::tmpfile' do
         let(:params) { { content: 'random stuff' } }
 
         it { is_expected.to compile.with_all_deps }
+
         it {
-          is_expected.to create_file("/etc/tmpfiles.d/#{title}").with(
+          expect(subject).to create_file("/etc/tmpfiles.d/#{title}").with(
             ensure: 'file',
             content: %r{#{params[:content]}},
-            mode: '0444',
+            mode: '0444'
           )
         }
 
@@ -21,9 +24,9 @@ describe 'systemd::tmpfile' do
           let(:title) { 'test.badtype' }
 
           it {
-            expect {
-              is_expected.to compile.with_all_deps
-            }.to raise_error(%r{expects a match for Systemd::Dropin})
+            expect do
+              expect(subject).to compile.with_all_deps
+            end.to raise_error(%r{expects a match for Systemd::Dropin})
           }
         end
 
@@ -31,9 +34,9 @@ describe 'systemd::tmpfile' do
           let(:title) { 'test/foo.conf' }
 
           it {
-            expect {
-              is_expected.to compile.with_all_deps
-            }.to raise_error(%r{expects a match for Systemd::Dropin})
+            expect do
+              expect(subject).to compile.with_all_deps
+            end.to raise_error(%r{expects a match for Systemd::Dropin})
           }
         end
 
@@ -47,10 +50,10 @@ describe 'systemd::tmpfile' do
           end
 
           it {
-            is_expected.to create_file('/etc/tmpfiles.d/goodname.conf').with(
+            expect(subject).to create_file('/etc/tmpfiles.d/goodname.conf').with(
               ensure: 'file',
               content: %r{#{params[:content]}},
-              mode: '0444',
+              mode: '0444'
             )
           }
         end

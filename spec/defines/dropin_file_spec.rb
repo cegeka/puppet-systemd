@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe 'systemd::dropin_file' do
@@ -18,22 +20,52 @@ describe 'systemd::dropin_file' do
         it { is_expected.to compile.with_all_deps }
 
         it {
-          is_expected.to create_file("/etc/systemd/system/#{params[:unit]}.d").with(
+          expect(subject).to create_file("/etc/systemd/system/#{params[:unit]}.d").with(
             ensure: 'directory',
             recurse: 'true',
             purge: 'true',
-            selinux_ignore_defaults: false,
+            selinux_ignore_defaults: false
           )
         }
 
         it {
-          is_expected.to create_file("/etc/systemd/system/#{params[:unit]}.d/#{title}").with(
+          expect(subject).to create_file("/etc/systemd/system/#{params[:unit]}.d/#{title}").with(
             ensure: 'file',
             content: %r{#{params[:content]}},
             mode: '0444',
-            selinux_ignore_defaults: false,
+            selinux_ignore_defaults: false
           )
         }
+
+        context 'notifies services' do
+          let(:params) do
+            super().merge(notify_service: true)
+          end
+          let(:filename) { "/etc/systemd/system/#{params[:unit]}.d/#{title}" }
+          let(:pre_condition) do
+            <<-PUPPET
+            service { ['test', 'test.service']:
+            }
+            PUPPET
+          end
+
+          it { is_expected.to compile.with_all_deps }
+          it { is_expected.to contain_service('test').that_subscribes_to("File[#{filename}]") }
+          it { is_expected.to contain_service('test.service').that_subscribes_to("File[#{filename}]") }
+
+          context 'with overridden name' do
+            let(:pre_condition) do
+              <<-PUPPET
+              service { 'myservice':
+                name => 'test',
+              }
+              PUPPET
+            end
+
+            it { is_expected.to compile.with_all_deps }
+            it { is_expected.to contain_service('myservice').that_subscribes_to("File[#{filename}]") }
+          end
+        end
 
         context 'with selinux_ignore_defaults set to true' do
           let(:params) do
@@ -48,9 +80,9 @@ describe 'systemd::dropin_file' do
           let(:title) { 'test.badtype' }
 
           it {
-            expect {
-              is_expected.to compile.with_all_deps
-            }.to raise_error(%r{expects a match for Systemd::Dropin})
+            expect do
+              expect(subject).to compile.with_all_deps
+            end.to raise_error(%r{expects a match for Systemd::Dropin})
           }
         end
 
@@ -58,9 +90,9 @@ describe 'systemd::dropin_file' do
           let(:title) { 'test/bad.conf' }
 
           it {
-            expect {
-              is_expected.to compile.with_all_deps
-            }.to raise_error(%r{expects a match for Systemd::Dropin})
+            expect do
+              expect(subject).to compile.with_all_deps
+            end.to raise_error(%r{expects a match for Systemd::Dropin})
           }
         end
 
@@ -87,13 +119,14 @@ describe 'systemd::dropin_file' do
           end
 
           it {
-            is_expected.to create_file("/etc/systemd/system/#{params[:unit]}.d/#{params[:filename]}").with(
+            expect(subject).to create_file("/etc/systemd/system/#{params[:unit]}.d/#{params[:filename]}").with(
               ensure: 'file',
               content: %r{#{params[:content]}},
-              mode: '0444',
+              mode: '0444'
             )
           }
         end
+
         context 'with sensitve content' do
           let(:title) { 'sensitive.conf' }
           let(:params) do
@@ -104,9 +137,9 @@ describe 'systemd::dropin_file' do
           end
 
           it {
-            is_expected.to create_file("/etc/systemd/system/#{params[:unit]}.d/#{title}").with(
+            expect(subject).to create_file("/etc/systemd/system/#{params[:unit]}.d/#{title}").with(
               ensure: 'file',
-              content: sensitive('TEST_CONTENT'),
+              content: sensitive('TEST_CONTENT')
             )
           }
         end

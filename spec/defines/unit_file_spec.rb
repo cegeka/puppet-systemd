@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe 'systemd::unit_file' do
@@ -10,11 +12,27 @@ describe 'systemd::unit_file' do
 
         it { is_expected.to compile.with_all_deps }
 
-        it do
-          is_expected.to create_file("/etc/systemd/system/#{title}")
-            .with_ensure('file')
-            .with_content(%r{#{params[:content]}})
-            .with_mode('0444')
+        context 'with non-sensitive Content' do
+          let(:params) { { content: 'non-sensitive Content' } }
+
+          it do
+            expect(subject).to create_file("/etc/systemd/system/#{title}").
+              with_ensure('file').
+              with_content(params[:content]).
+              with_mode('0444')
+          end
+        end
+
+        context 'with sensitive Content' do
+          let(:params) { { content: sensitive('sensitive Content') } }
+
+          it do
+            resource = catalogue.resource("File[/etc/systemd/system/#{title}]")
+            expect(resource[:content]).to eq(params[:content].unwrap)
+
+            expect(subject).to contain_file("/etc/systemd/system/#{title}").
+              with({ content: sensitive('sensitive Content') })
+          end
         end
 
         context 'with a bad unit type' do
@@ -33,17 +51,18 @@ describe 'systemd::unit_file' do
           let(:params) do
             super().merge(
               enable: true,
-              active: true,
+              active: true
             )
           end
 
           it { is_expected.to compile.with_all_deps }
+
           it do
-            is_expected.to contain_service('test.service')
-              .with_ensure(true)
-              .with_enable(true)
-              .with_provider('systemd')
-              .that_subscribes_to("File[/etc/systemd/system/#{title}]")
+            expect(subject).to contain_service('test.service').
+              with_ensure(true).
+              with_enable(true).
+              with_provider('systemd').
+              that_subscribes_to("File[/etc/systemd/system/#{title}]")
           end
         end
 
@@ -66,19 +85,39 @@ describe 'systemd::unit_file' do
             let(:params) do
               super().merge(
                 enable: false,
-                active: false,
+                active: false
               )
             end
 
             it { is_expected.to compile.with_all_deps }
+
             it do
-              is_expected.to contain_service('test.service')
-                .with_ensure(false)
-                .with_enable(false)
-                .with_provider('systemd')
-                .that_comes_before("File[/etc/systemd/system/#{title}]")
+              expect(subject).to contain_service('test.service').
+                with_ensure(false).
+                with_enable(false).
+                with_provider('systemd').
+                that_comes_before("File[/etc/systemd/system/#{title}]")
             end
           end
+        end
+
+        context 'enable => mask' do
+          let(:params) { { enable: 'mask' } }
+
+          it do
+            expect(subject).to create_file("/etc/systemd/system/#{title}").
+              with_ensure('link').
+              with_target('/dev/null')
+          end
+        end
+
+        context 'when using default values for enable and active' do
+          it {
+            expect(subject).to create_exec("#{title}-systemctl-daemon-reload").with(
+              command: 'systemctl daemon-reload',
+              refreshonly: true
+            )
+          }
         end
       end
     end

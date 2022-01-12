@@ -1,10 +1,15 @@
 # Systemd
 
-[![Puppet Forge](http://img.shields.io/puppetforge/v/camptocamp/systemd.svg)](https://forge.puppetlabs.com/camptocamp/systemd)
-[![Puppet Forge Downloads](http://img.shields.io/puppetforge/dt/camptocamp/systemd.svg)](https://forge.puppetlabs.com/camptocamp/systemd)
-[![Build Status](https://travis-ci.org/camptocamp/puppet-systemd.png?branch=master)](https://travis-ci.org/camptocamp/puppet-systemd)
-[![Puppet Forge Endorsement](https://img.shields.io/puppetforge/e/camptocamp/systemd.svg)](https://forge.puppetlabs.com/camptocamp/systemd)
-[![By Camptocamp](https://img.shields.io/badge/by-camptocamp-fb7047.svg)](http://www.camptocamp.com)
+[![Build Status](https://github.com/voxpupuli/puppet-systemd/workflows/CI/badge.svg)](https://github.com/voxpupuli/puppet-systemd/actions?query=workflow%3ACI)
+[![Release](https://github.com/voxpupuli/puppet-systemd/actions/workflows/release.yml/badge.svg)](https://github.com/voxpupuli/puppet-systemd/actions/workflows/release.yml)
+[![Puppet Forge](https://img.shields.io/puppetforge/v/puppet/systemd.svg)](https://forge.puppetlabs.com/puppet/systemd)
+[![Puppet Forge - downloads](https://img.shields.io/puppetforge/dt/puppet/systemd.svg)](https://forge.puppetlabs.com/puppet/systemd)
+[![Puppet Forge - endorsement](https://img.shields.io/puppetforge/e/puppet/systemd.svg)](https://forge.puppetlabs.com/puppet/systemd)
+[![Puppet Forge - scores](https://img.shields.io/puppetforge/f/puppet/systemd.svg)](https://forge.puppetlabs.com/puppet/systemd)
+[![puppetmodule.info docs](http://www.puppetmodule.info/images/badge.png)](http://www.puppetmodule.info/m/puppet-systemd)
+[![Apache-2 License](https://img.shields.io/github/license/voxpupuli/puppet-systemd.svg)](LICENSE)
+[![Donated by Camptocamp](https://img.shields.io/badge/donated%20by-camptocamp-fb7047.svg)](#transfer-notice)
+
 
 ## Overview
 
@@ -262,9 +267,9 @@ $manage_networkd is required if you want to reload it for new
 `systemd::network` resources. Setting $manage_resolved will also manage your
 `/etc/resolv.conf`.
 
-When configuring `systemd::resolved` you could set `dns_stub_resolver` to false (default) to use a *standard* `/etc/resolved.conf`, or you could set it to `true` to use the local resolver provided by `systemd-resolved`.
+When configuring `systemd::resolved` you could set `use_stub_resolver` to false (default) to use a *standard* `/etc/resolved.conf`, or you could set it to `true` to use the local resolver provided by `systemd-resolved`.
 
-Systemd has introduced `DNS Over TLS` in the release 239. Currently two states are supported `no` and `opportunistic`. When enabled with `opportunistic` `systemd-resolved` will start a TCP-session to a DNS server with `DNS Over TLS` support. Note that there will be no host checking for `DNS Over TLS` due to missing implementation in `systemd-resolved`.
+Systemd has introduced `DNS Over TLS` in the release 239. Currently three states are supported `yes` (since systemd 243), `opportunistic` (true) and `no` (false, default). When enabled with `yes` or `opportunistic` `systemd-resolved` will start a TCP-session to a DNS server with `DNS Over TLS` support. When enabled with `yes` (strict mode), queries will fail if the configured DNS servers do not support `DNS Over TLS`. Note that there will be no host checking for `DNS Over TLS` due to missing implementation in `systemd-resolved`.
 
 It is possible to configure the default ntp servers in `/etc/systemd/timesyncd.conf`:
 
@@ -317,7 +322,7 @@ Additionally you can set custom udev rules with the `udev_rules` parameter.
 ```puppet
 class { 'systemd':
   manage_udevd => true,
-  udev_rules   => { 
+  udev_rules   => {
       'example_raw.rules' => {
       'rules'             => [
         'ACTION=="add", KERNEL=="sda", RUN+="/bin/raw /dev/raw/raw1 %N"',
@@ -367,3 +372,26 @@ loginctl_user { 'foo':
 ```
 
 or as a hash via the `systemd::loginctl_users` parameter.
+
+### Systemd Escape Function
+Escapes strings as `systemd-escape` command does.
+
+```puppet
+$result = systemd::escape('foo::bar/')
+```
+`$result` would be `foo::bar-`
+
+or path escape as if with `-p` option.
+
+```puppet
+$result = systemd::escape('/mnt/foobar/', true)
+```
+`$result` would be `mnt-foobar`.
+
+## Transfer Notice
+
+This plugin was originally authored by [Camptocamp](http://www.camptocamp.com).
+The maintainer preferred that Puppet Community take ownership of the module for future improvement and maintenance.
+Existing pull requests and issues were transferred over, please fork and continue to contribute here instead of Camptocamp.
+
+Previously: https://github.com/camptocamp/puppet-systemd

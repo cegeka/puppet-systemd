@@ -4,10 +4,10 @@
 #
 # @see udev(7)
 #
-# @attr name [Pattern['^.+\.rules$']]
+# @param name [Pattern['^.+\.rules$']]
 #   The name of the udev rules to create
 #
-# @param $ensure
+# @param ensure
 #   Whether to drop a file or remove it
 #
 # @param path
@@ -26,8 +26,8 @@ define systemd::udev::rule (
   Array                             $rules,
   Enum['present', 'absent', 'file'] $ensure                  = 'present',
   Stdlib::Absolutepath              $path                    = '/etc/udev/rules.d',
-  Optional[Variant[Array, String]]  $notify_services         = [],
-  Optional[Boolean]                 $selinux_ignore_defaults = false,
+  Variant[Array[String[1]], String[1]] $notify_services      = [],
+  Boolean                           $selinux_ignore_defaults = false,
 ) {
   include systemd
 
@@ -43,6 +43,6 @@ define systemd::udev::rule (
     path                    => join([$path, $name], '/'),
     notify                  => $notify_services,
     selinux_ignore_defaults => $selinux_ignore_defaults,
-    content                 => epp("${module_name}/udev_rule.epp", {'rules' => $rules}),
+    content                 => epp("${module_name}/udev_rule.epp", { 'rules' => $rules }),
   }
 }

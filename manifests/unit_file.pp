@@ -1,4 +1,4 @@
-# Creates a systemd unit file
+# @summary Creates a systemd unit file
 #
 # @api public
 #
@@ -52,7 +52,7 @@
 define systemd::unit_file (
   Enum['present', 'absent', 'file']        $ensure    = 'present',
   Stdlib::Absolutepath                     $path      = '/etc/systemd/system',
-  Optional[String]                         $content   = undef,
+  Optional[Variant[String, Sensitive[String], Deferred]] $content = undef,
   Optional[String]                         $source    = undef,
   Optional[Stdlib::Absolutepath]           $target    = undef,
   String                                   $owner     = 'root',
@@ -67,7 +67,13 @@ define systemd::unit_file (
 
   assert_type(Systemd::Unit, $name)
 
-  if $target {
+  if $enable == 'mask' {
+    $_target = '/dev/null'
+  } else {
+    $_target = $target
+  }
+
+  if $_target {
     $_ensure = 'link'
   } else {
     $_ensure = $ensure ? {
@@ -80,7 +86,7 @@ define systemd::unit_file (
     ensure    => $_ensure,
     content   => $content,
     source    => $source,
-    target    => $target,
+    target    => $_target,
     owner     => $owner,
     group     => $group,
     mode      => $mode,
@@ -88,7 +94,6 @@ define systemd::unit_file (
   }
 
   if $enable != undef or $active != undef {
-
     service { $name:
       ensure   => $active,
       enable   => $enable,
@@ -104,8 +109,9 @@ define systemd::unit_file (
     } else {
       File["${path}/${name}"] ~> Service[$name]
     }
-  } elsif $ensure == 'absent' {
+  } else {
     # Work around https://tickets.puppetlabs.com/browse/PUP-9473
+    # and react to changes on static unit files (ie: .service triggered by .timer)
     exec { "${name}-systemctl-daemon-reload":
       command     => 'systemctl daemon-reload',
       refreshonly => true,

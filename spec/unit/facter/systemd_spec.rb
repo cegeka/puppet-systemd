@@ -1,12 +1,15 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe Facter.fact(:systemd) do
-  before(:each) { Facter.clear }
-  after(:each) { Facter.clear }
+  before { Facter.clear }
+
+  after { Facter.clear }
 
   describe 'systemd' do
     context 'returns true when systemd present' do
-      before(:each) do
+      before do
         allow(Facter.fact(:kernel)).to receive(:value).and_return(:linux)
         Facter.add(:service_provider) { setcode { 'systemd' } }
       end
@@ -16,7 +19,7 @@ describe Facter.fact(:systemd) do
     end
 
     context 'returns false when systemd not present' do
-      before(:each) do
+      before do
         allow(Facter.fact(:kernel)).to receive(:value).and_return(:linux)
         Facter.add(:service_provider) { setcode { 'redhat' } }
       end
@@ -26,7 +29,7 @@ describe Facter.fact(:systemd) do
     end
 
     context 'returns nil when kernel is not linux' do
-      before(:each) do
+      before do
         allow(Facter.fact(:kernel)).to receive(:value).and_return(:windows)
       end
 
